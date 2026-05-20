@@ -1,0 +1,278 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Apple Design System — CSS Custom Properties */
+@layer base {
+    :root {
+        --color-midnight: #1d1d1f;
+        --color-cloud: #6b6c6c;
+        --color-frost: #f3f6f6;
+        --color-steel: #cccfcf;
+        --color-alabaster: #e8e8ed;
+        --color-vivid: #0071e3;
+        --color-ocean: #0066cc;
+
+        --radius-card: 28px;
+        --radius-btn: 28px;
+        --radius-default: 12px;
+
+        --shadow-subtle: rgba(0, 0, 0, 0.11) 0px 0px 1px 0px inset;
+        --shadow-xl: rgba(0, 0, 0, 0.05) 0px 0px 35px 20px;
+
+        --section-gap: 70px;
+        --card-padding: 14px;
+        --element-gap: 10px;
+    }
+
+    body {
+        font-family: 'SF Pro Text', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #1d1d1f;
+        background-color: #ffffff;
+        font-size: 17px;
+        line-height: 1.47;
+        letter-spacing: -0.022em;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+}
+
+@layer components {
+    /* Cards */
+    .card {
+        background: #ffffff;
+        border-radius: 28px;
+        padding: 28px;
+        box-shadow: rgba(0, 0, 0, 0.11) 0px 0px 1px 0px inset;
+    }
+
+    .card-frost {
+        background: #f3f6f6;
+        border-radius: 28px;
+        padding: 28px;
+    }
+
+    .card-title {
+        font-family: 'SF Pro Display', system-ui, sans-serif;
+        font-size: 24px;
+        line-height: 1.18;
+        letter-spacing: -0.288px;
+        font-weight: 600;
+        color: #1d1d1f;
+    }
+
+    /* Buttons */
+    .btn {
+        @apply inline-flex items-center justify-center min-h-[44px] px-6 font-normal transition-all duration-200;
+        font-family: 'SF Pro Text', system-ui, sans-serif;
+        font-size: 17px;
+        line-height: 1.18;
+        letter-spacing: -0.16px;
+        border-radius: 28px;
+    }
+
+    .btn-primary {
+        background: #0071e3;
+        color: #ffffff;
+    }
+
+    .btn-primary:hover {
+        background: #0077ed;
+    }
+
+    .btn-ghost {
+        background: transparent;
+        color: #1d1d1f;
+    }
+
+    .btn-ghost:hover {
+        background: #f3f6f6;
+    }
+
+    .btn-danger {
+        background: #ff3b30;
+        color: #ffffff;
+    }
+
+    .btn-danger:hover {
+        background: #e6352b;
+    }
+
+    .btn-secondary {
+        background: #e8e8ed;
+        color: #1d1d1f;
+    }
+
+    .btn-secondary:hover {
+        background: #dedfe2;
+    }
+
+    /* Form Inputs */
+    .form-input {
+        @apply w-full px-4 py-3 transition-all duration-200;
+        font-family: 'SF Pro Text', system-ui, sans-serif;
+        font-size: 17px;
+        color: #1d1d1f;
+        background: #ffffff;
+        border: 1px solid #cccfcf;
+        border-radius: 12px;
+    }
+
+    .form-input::placeholder {
+        color: #6b6c6c;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: #0071e3;
+        box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+    }
+
+    .form-input:disabled {
+        background: #f3f6f6;
+        color: #6b6c6c;
+        cursor: not-allowed;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #1d1d1f;
+        margin-bottom: 6px;
+        letter-spacing: -0.168px;
+    }
+
+    .form-error {
+        font-size: 14px;
+        color: #ff3b30;
+        margin-top: 4px;
+    }
+
+    /* Tables */
+    .table-responsive {
+        @apply w-full overflow-x-auto;
+        border-radius: 28px;
+        box-shadow: rgba(0, 0, 0, 0.11) 0px 0px 1px 0px inset;
+    }
+
+    .table {
+        @apply w-full border-collapse;
+    }
+
+    .table th {
+        @apply px-5 py-3 text-left;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b6c6c;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        background: #f3f6f6;
+    }
+
+    .table td {
+        @apply px-5 py-4;
+        font-size: 14px;
+        color: #1d1d1f;
+        border-bottom: 1px solid #f3f6f6;
+    }
+
+    .table tbody tr:hover {
+        background: #f3f6f6;
+    }
+
+    /* Alerts */
+    .alert {
+        border-radius: 12px;
+        padding: 14px 20px;
+        margin-bottom: 14px;
+        font-size: 14px;
+    }
+
+    .alert-success {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        color: #166534;
+    }
+
+    .alert-error {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+    }
+
+    .alert-warning {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+    }
+
+    .alert-info {
+        background: #f3f6f6;
+        border: 1px solid #cccfcf;
+        color: #444545;
+    }
+
+    /* Navigation */
+    .nav-link {
+        font-size: 14px;
+        font-weight: 400;
+        color: #1d1d1f;
+        letter-spacing: -0.168px;
+        transition: color 0.2s;
+        padding: 0 10px;
+    }
+
+    .nav-link:hover {
+        color: #0066cc;
+    }
+
+    /* Tap target */
+    .tap-target {
+        @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+    }
+
+    /* Chart container */
+    .chart-container {
+        @apply w-full overflow-x-auto;
+        border-radius: 28px;
+    }
+
+    /* Spinner */
+    .spinner {
+        @apply inline-block animate-spin;
+        border: 2px solid #e8e8ed;
+        border-top-color: #0071e3;
+        border-radius: 50%;
+    }
+
+    .spinner-sm { @apply h-4 w-4; }
+    .spinner-md { @apply h-6 w-6; }
+    .spinner-lg { @apply h-8 w-8; }
+
+    /* Notification */
+    .animate-slide-in {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateX(100%); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .chart-container { @apply -mx-4 px-4; }
+        .table-responsive { @apply -mx-4 px-4; border-radius: 0; }
+    }
+}
+
+@layer utilities {
+    .text-muted { color: #6b6c6c; }
+    .text-link { color: #0066cc; }
+    .bg-frost { background: #f3f6f6; }
+
+    @media (prefers-reduced-motion: reduce) {
+        * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+}
