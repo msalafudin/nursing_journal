@@ -153,7 +153,11 @@ class PatientDataController extends Controller
                 $value = $request->input($field['key']);
                 $data[$field['key']] = $value !== null ? (int)$value : null;
                 if ($value !== null) {
-                    $totalPatients += (int)$value;
+                    // Only count sensus fields (or fields without category) toward total
+                    $category = $field['category'] ?? 'count';
+                    if ($category !== 'mutasi') {
+                        $totalPatients += (int)$value;
+                    }
                 }
             } elseif ($field['type'] === 'text' && !isset($field['auto_calculated'])) {
                 $data[$field['key']] = $request->input($field['key']);
@@ -207,5 +211,101 @@ class PatientDataController extends Controller
         $output .= "\nTotal Pasien: " . $patientData->total_patients . "\n";
 
         return $output;
+    }
+
+    /**
+     * Update existing patient data (replace duplicate).
+     */
+    public function update(Request $request, PatientData $patientData)
+    {
+        $user = auth()->user();
+        $unit = $user->unit;
+
+        if (!$unit) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda belum ditugaskan ke unit manapun.',
+            ], 403);
+        }
+
+        // Ensure the record belongs to the same unit
+        if ($patientData->unit_id !== $unit->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses untuk mengubah data ini.',
+            ], 403);
+        }
+
+        $fields = $unit->getFieldDefinition();
+
+        // Build validation rules
+        $rules = [
+            'date' => 'required|date',
+            'shift' => 'required|in:Pagi,Siang,Malam',
+        ];
+
+        $messages = [
+            'date.required' => 'Tanggal harus diisi',
+            'date.date' => 'Format tanggal tidak valid',
+            'shift.required' => 'Shift harus dipilih',
+            'shift.in' => 'Shift harus salah satu dari: Pagi, Siang, Malam',
+        ];
+
+        foreach ($fields as $field) {
+            if ($field['type'] === 'numeric' && !isset($field['auto_calculated'])) {
+                if ($field['required']) {
+                    $rules[$field['key']] = 'required|numeric|min:' . ($field['min'] ?? 0) . '|max:' . ($field['max'] ?? 9999);
+                    $messages[$field['key'] . '.required'] = $field['name'] . ' harus diisi';
+                    $messages[$field['key'] . '.numeric'] = $field['name'] . ' harus berupa angka';
+                    $messages[$field['key'] . '.min'] = $field['name'] . ' harus minimal ' . ($field['min'] ?? 0);
+                    $messages[$field['key'] . '.max'] = $field['name'] . ' harus maksimal ' . ($field['max'] ?? 9999);
+                } else {
+                    $rules[$field['key']] = 'nullable|numeric|min:' . ($field['min'] ?? 0) . '|max:' . ($field['max'] ?? 9999);
+                }
+            } elseif ($field['type'] === 'text' && !isset($field['auto_calculated'])) {
+                if ($field['required']) {
+                    $rules[$field['key']] = 'required|string';
+                    $messages[$field['key'] . '.required'] = $field['name'] . ' harus diisi';
+                } else {
+                    $rules[$field['key']] = 'nullable|string';
+                }
+            }
+        }
+
+        $validated = $request->validate($rules, $messages);
+
+        // Prepare data
+        $data = [];
+        $totalPatients = 0;
+
+        foreach ($fields as $field) {
+            if ($field['type'] === 'numeric' && !isset($field['auto_calculated'])) {
+                $value = $request->input($field['key']);
+                $data[$field['key']] = $value !== null ? (int)$value : null;
+                if ($value !== null) {
+                    $category = $field['category'] ?? 'count';
+                    if ($category !== 'mutasi') {
+                        $totalPatients += (int)$value;
+                    }
+                }
+            } elseif ($field['type'] === 'text' && !isset($field['auto_calculated'])) {
+                $data[$field['key']] = $request->input($field['key']);
+            }
+        }
+
+        $patientData->update([
+            'user_id' => $user->id,
+            'data' => $data,
+            'total_patients' => $totalPatients,
+        ]);
+
+        $textOutput = $this->generateTextOutput($patientData->fresh(), $fields);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data pasien berhasil diperbarui',
+            'data' => $patientData,
+            'text_output' => $textOutput,
+        ]);
     }
 }

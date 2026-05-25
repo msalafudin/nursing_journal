@@ -149,6 +149,32 @@
     </div>
 </div>
 
+<!-- Duplicate Confirmation Modal -->
+<div id="duplicateModal" class="fixed inset-0 z-[70] hidden">
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" id="duplicateModalOverlay"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-midnight">Data Duplikat</h3>
+            </div>
+            <p id="duplicateMessage" class="text-body text-cloud mb-6">Data untuk tanggal, shift, dan unit ini sudah ada. Apakah Anda ingin mengganti data yang lama?</p>
+            <div class="flex gap-3">
+                <button type="button" id="duplicateCancelBtn" class="flex-1 tap-target btn btn-secondary">
+                    Batal
+                </button>
+                <button type="button" id="duplicateReplaceBtn" class="flex-1 tap-target btn btn-primary bg-amber-600 hover:bg-amber-700 border-amber-600 hover:border-amber-700">
+                    Ganti Data
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('patientDataForm');
@@ -156,12 +182,98 @@ document.addEventListener('DOMContentLoaded', function() {
     const textFields = document.querySelectorAll('.text-field');
     const autoCalculatedFields = document.querySelectorAll('[data-calculation]');
 
+    // Duplicate modal elements
+    const duplicateModal = document.getElementById('duplicateModal');
+    const duplicateModalOverlay = document.getElementById('duplicateModalOverlay');
+    const duplicateCancelBtn = document.getElementById('duplicateCancelBtn');
+    const duplicateReplaceBtn = document.getElementById('duplicateReplaceBtn');
+    const duplicateMessage = document.getElementById('duplicateMessage');
+    let pendingExistingId = null;
+
     // Function to show notification
     function showNotification(message, type = 'success') {
         if (window.notificationManager) {
             window.notificationManager.show(message, type);
         }
     }
+
+    // Show duplicate modal
+    function showDuplicateModal(message, existingId) {
+        duplicateMessage.textContent = message;
+        pendingExistingId = existingId;
+        duplicateModal.classList.remove('hidden');
+    }
+
+    // Hide duplicate modal
+    function hideDuplicateModal() {
+        duplicateModal.classList.add('hidden');
+        pendingExistingId = null;
+    }
+
+    // Cancel button
+    duplicateCancelBtn.addEventListener('click', hideDuplicateModal);
+    duplicateModalOverlay.addEventListener('click', hideDuplicateModal);
+
+    // Replace button - send PUT request to update existing record
+    duplicateReplaceBtn.addEventListener('click', function() {
+        if (!pendingExistingId) return;
+
+        const formData = new FormData(form);
+
+        fetch(`/patient-data/${pendingExistingId}`, {
+            method: 'PUT',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(Object.fromEntries(formData)),
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    if (data.errors) {
+                        Object.keys(data.errors).forEach(key => {
+                            const errorElement = document.getElementById(key + '-error');
+                            if (errorElement) {
+                                errorElement.textContent = data.errors[key][0];
+                                errorElement.classList.remove('hidden');
+                            }
+                        });
+                    }
+                    showNotification(data.message || 'Gagal memperbarui data', 'error');
+                    throw new Error('Update failed');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+
+                // Display text output
+                const textOutputContainer = document.getElementById('textOutputContainer');
+                const textOutput = document.getElementById('textOutput');
+                textOutput.value = data.text_output;
+                textOutputContainer.classList.remove('hidden');
+
+                // Scroll to and focus the text output
+                textOutputContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => { textOutput.focus(); textOutput.select(); }, 400);
+
+                form.reset();
+                document.querySelectorAll('[id$="-error"]').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.numeric-field, .text-field').forEach(field => field.classList.remove('border-red-500'));
+                autoCalculatedFields.forEach(field => { field.value = ''; });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            hideDuplicateModal();
+        });
+    });
 
     // Function to validate numeric field
     function validateNumericField(field) {
@@ -323,10 +435,10 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 if (response.status === 409) {
-                    // Duplicate entry
+                    // Duplicate entry - show confirmation modal
                     return response.json().then(data => {
-                        showNotification(data.message, 'error');
-                        throw new Error('Duplicate entry');
+                        showDuplicateModal(data.message, data.existing_id);
+                        throw new Error('duplicate');
                     });
                 }
                 if (!response.ok) {
@@ -360,6 +472,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     textOutput.value = data.text_output;
                     textOutputContainer.classList.remove('hidden');
                     
+                    // Scroll to and focus the text output
+                    textOutputContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => { textOutput.focus(); textOutput.select(); }, 400);
+
                     form.reset();
                     
                     // Clear all error messages

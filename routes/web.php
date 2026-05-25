@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
     // Patient data routes
     Route::get('/patient-data/form', [PatientDataController::class, 'showForm'])->name('patient-data.form');
     Route::post('/patient-data/store', [PatientDataController::class, 'store'])->name('patient-data.store');
+    Route::put('/patient-data/{patientData}', [PatientDataController::class, 'update'])->name('patient-data.update');
 
     // User management routes (Admin only)
     Route::middleware('role:Admin')->group(function () {
@@ -61,6 +62,9 @@ Route::middleware('auth')->group(function () {
 
         // Report routes (Admin only)
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/compare', [ReportController::class, 'comparePage'])->name('reports.compare');
+        Route::get('/reports/detail', [ReportController::class, 'detailPage'])->name('reports.detail');
+        Route::get('/reports/detail-data', [ReportController::class, 'getDetailData'])->name('reports.detail-data');
         Route::get('/reports/data', [ReportController::class, 'getData'])->name('reports.data');
         Route::get('/reports/monthly', [ReportController::class, 'getMonthlyData'])->name('reports.monthly');
         Route::get('/reports/monthly-page', [ReportController::class, 'monthlyPage'])->name('reports.monthly-page');

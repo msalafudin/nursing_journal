@@ -56,6 +56,33 @@
             <canvas id="chart" style="max-height: 400px;"></canvas>
         </div>
     </div>
+
+    <!-- Rata-rata Jumlah Pasien -->
+    <div class="card mt-8">
+        <h2 class="card-title mb-5">Rata-rata Jumlah Pasien</h2>
+        <div id="averageLoading" class="flex items-center justify-center py-8 hidden">
+            <div class="spinner spinner-lg"></div>
+            <span class="ml-4 text-body-lg text-cloud">Menghitung rata-rata...</span>
+        </div>
+        <div id="averageEmpty" class="flex flex-col items-center justify-center py-8 hidden">
+            <p class="text-body-lg text-cloud">Tidak ada data untuk dihitung</p>
+        </div>
+        <div id="averageContainer" class="hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-steel/20">
+                            <th class="py-3 px-4 text-sub font-medium text-cloud">Unit</th>
+                            <th class="py-3 px-4 text-sub font-medium text-cloud text-right">Total Pasien</th>
+                            <th class="py-3 px-4 text-sub font-medium text-cloud text-right">Jumlah Hari</th>
+                            <th class="py-3 px-4 text-sub font-medium text-cloud text-right">Rata-rata / Hari</th>
+                        </tr>
+                    </thead>
+                    <tbody id="averageTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
@@ -77,7 +104,7 @@ function loadReportData() {
     const startDate = document.getElementById('start_date').value;
     const endDate = document.getElementById('end_date').value;
 
-    ['validationError','errorMessage','emptyState','chartContainer'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    ['validationError','errorMessage','emptyState','chartContainer','averageContainer','averageEmpty'].forEach(id => document.getElementById(id).classList.add('hidden'));
     document.getElementById('loadingIndicator').classList.remove('hidden');
 
     loadingTimer = setTimeout(() => {
@@ -104,8 +131,9 @@ function loadReportData() {
                 document.getElementById(el).classList.remove('hidden');
                 return;
             }
-            if (!data.data.length) { document.getElementById('emptyState').classList.remove('hidden'); return; }
+            if (!data.data.length) { document.getElementById('emptyState').classList.remove('hidden'); document.getElementById('averageEmpty').classList.remove('hidden'); return; }
             renderChart(data.data);
+            renderAverage(data.data);
         })
         .catch(() => {
             clearTimeout(loadingTimer);
@@ -115,10 +143,34 @@ function loadReportData() {
         });
 }
 
+/**
+ * For Rawat Inap: only keep the last shift per day (sensus data).
+ * For other units: keep all records (sum across shifts).
+ */
+function filterLastShiftForRanap(data, shiftOrder) {
+    // Separate Rawat Inap from other units
+    const ranapData = data.filter(r => r.unit_name === 'Rawat Inap');
+    const otherData = data.filter(r => r.unit_name !== 'Rawat Inap');
+
+    // For Rawat Inap: group by date, keep only last shift
+    const ranapByDate = {};
+    ranapData.forEach(r => {
+        if (!ranapByDate[r.date] || (shiftOrder[r.shift] || 0) > (shiftOrder[ranapByDate[r.date].shift] || 0)) {
+            ranapByDate[r.date] = r;
+        }
+    });
+
+    return [...otherData, ...Object.values(ranapByDate)];
+}
+
 function renderChart(data) {
-    const units = [...new Set(data.map(d => d.unit_name))];
+    // For Rawat Inap: only use last shift per day (sensus logic)
+    const shiftOrder = { 'Pagi': 1, 'Siang': 2, 'Malam': 3 };
+    const processedData = filterLastShiftForRanap(data, shiftOrder);
+
+    const units = [...new Set(processedData.map(d => d.unit_name))];
     const dateMap = {};
-    data.forEach(r => { if (!dateMap[r.date]) dateMap[r.date] = {}; dateMap[r.date][r.unit_name] = (dateMap[r.date][r.unit_name] || 0) + r.total_patients; });
+    processedData.forEach(r => { if (!dateMap[r.date]) dateMap[r.date] = {}; dateMap[r.date][r.unit_name] = (dateMap[r.date][r.unit_name] || 0) + r.total_patients; });
     const sorted = Object.entries(dateMap).sort(([a],[b]) => a.localeCompare(b));
     const labels = sorted.map(([d]) => d);
 
@@ -155,6 +207,56 @@ function renderChart(data) {
         },
     });
     document.getElementById('chartContainer').classList.remove('hidden');
+}
+
+function renderAverage(data) {
+    const shiftOrder = { 'Pagi': 1, 'Siang': 2, 'Malam': 3 };
+    const processedData = filterLastShiftForRanap(data, shiftOrder);
+
+    const unitStats = {};
+    processedData.forEach(r => {
+        if (!unitStats[r.unit_name]) unitStats[r.unit_name] = { total: 0, dates: new Set() };
+        unitStats[r.unit_name].total += r.total_patients;
+        unitStats[r.unit_name].dates.add(r.date);
+    });
+
+    const tbody = document.getElementById('averageTableBody');
+    tbody.innerHTML = '';
+
+    let grandTotal = 0;
+    let allDates = new Set();
+
+    Object.entries(unitStats).sort(([a],[b]) => a.localeCompare(b)).forEach(([unit, stat]) => {
+        const days = stat.dates.size;
+        const avg = days > 0 ? (stat.total / days).toFixed(1) : 0;
+        grandTotal += stat.total;
+        stat.dates.forEach(d => allDates.add(d));
+
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-steel/10 hover:bg-mist/50 transition-colors';
+        tr.innerHTML = `
+            <td class="py-3 px-4 text-body text-midnight font-medium">${unit}</td>
+            <td class="py-3 px-4 text-body text-midnight text-right">${stat.total}</td>
+            <td class="py-3 px-4 text-body text-midnight text-right">${days}</td>
+            <td class="py-3 px-4 text-body text-midnight text-right font-semibold">${avg}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Total row
+    const totalDays = allDates.size;
+    const grandAvg = totalDays > 0 ? (grandTotal / totalDays).toFixed(1) : 0;
+    const totalRow = document.createElement('tr');
+    totalRow.className = 'border-t-2 border-midnight/20 bg-mist/30';
+    totalRow.innerHTML = `
+        <td class="py-3 px-4 text-body text-midnight font-semibold">Total Semua Unit</td>
+        <td class="py-3 px-4 text-body text-midnight text-right font-semibold">${grandTotal}</td>
+        <td class="py-3 px-4 text-body text-midnight text-right font-semibold">${totalDays}</td>
+        <td class="py-3 px-4 text-body text-midnight text-right font-semibold">${grandAvg}</td>
+    `;
+    tbody.appendChild(totalRow);
+
+    document.getElementById('averageContainer').classList.remove('hidden');
 }
 </script>
 @endsection

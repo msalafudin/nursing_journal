@@ -25,7 +25,7 @@ class PatientDataSeeder extends Seeder
             foreach ($startDate->toPeriod($endDate) as $date) {
                 foreach ($shifts as $shift) {
                     $data = $this->generateRandomData($unit->name);
-                    $total = collect($data)->filter(fn($v) => is_numeric($v))->sum();
+                    $total = $this->calculateTotal($unit->name, $data);
 
                     PatientData::updateOrCreate(
                         [
@@ -57,14 +57,17 @@ class PatientDataSeeder extends Seeder
                 'keterangan_penyakit_rawat_jalan' => 'Batuk, Flu, ISPA',
             ],
             'Rawat Inap' => [
-                'jumlah_pasien_anak' => rand(3, 15),
-                'jumlah_pasien_dalam' => rand(5, 20),
-                'jumlah_pasien_saraf' => rand(2, 10),
-                'jumlah_pasien_obsgyn' => rand(2, 12),
-                'jumlah_pasien_bedah' => rand(3, 15),
-                'jumlah_inden' => rand(0, 5),
-                'jumlah_rpl' => rand(0, 3),
-                'jumlah_pasien_pulang' => rand(2, 10),
+                // Sensus (snapshot pasien saat ini)
+                'sensus_anak' => rand(3, 15),
+                'sensus_dalam' => rand(5, 20),
+                'sensus_saraf' => rand(2, 10),
+                'sensus_obsgyn' => rand(2, 12),
+                'sensus_bedah' => rand(3, 15),
+                // Mutasi (pergerakan pasien di shift ini)
+                'masuk_baru' => rand(0, 5),
+                'pasien_pulang' => rand(0, 4),
+                'jumlah_inden' => rand(0, 3),
+                'jumlah_rpl' => rand(0, 2),
             ],
             'Rawat Jalan' => [
                 'jumlah_poli_obgyn' => rand(5, 25),
@@ -98,5 +101,24 @@ class PatientDataSeeder extends Seeder
             ],
             default => [],
         };
+    }
+
+    /**
+     * Calculate total patients based on unit type.
+     * For Rawat Inap (hybrid): only sum sensus fields.
+     * For other units: sum all numeric fields.
+     */
+    private function calculateTotal(string $unitName, array $data): int
+    {
+        if ($unitName === 'Rawat Inap') {
+            // Only count sensus fields (actual patient count)
+            $sensusKeys = ['sensus_anak', 'sensus_dalam', 'sensus_saraf', 'sensus_obsgyn', 'sensus_bedah'];
+            return collect($data)
+                ->filter(fn($v, $k) => in_array($k, $sensusKeys) && is_numeric($v))
+                ->sum();
+        }
+
+        // For other units, sum all numeric values
+        return collect($data)->filter(fn($v) => is_numeric($v))->sum();
     }
 }

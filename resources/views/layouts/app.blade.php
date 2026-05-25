@@ -29,7 +29,21 @@
                         @if(auth()->user()->isAdmin())
                             <a href="{{ route('units.index') }}" class="nav-link">Unit</a>
                             <a href="{{ route('users.index') }}" class="nav-link">Pengguna</a>
-                            <a href="{{ route('reports.index') }}" class="nav-link">Laporan</a>
+                            <div class="relative" id="dropdown-laporan">
+                                <button type="button" class="nav-link inline-flex items-center gap-1" id="dropdown-laporan-btn">
+                                    Laporan
+                                    <svg class="w-3.5 h-3.5 transition-transform" id="dropdown-laporan-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                                    </svg>
+                                </button>
+                                <div class="absolute top-full right-0 mt-1 w-48 bg-white rounded-xl shadow-lg border border-steel/20 py-2 hidden z-50" id="dropdown-laporan-menu">
+                                    <a href="{{ route('reports.index') }}" class="block px-4 py-2 text-body text-midnight hover:bg-mist transition-colors">Laporan Unit</a>
+                                    <a href="{{ route('reports.index') }}" class="block px-4 py-2 text-body text-midnight hover:bg-mist transition-colors">Laporan Unit</a>
+                                    <a href="{{ route('reports.detail') }}" class="block px-4 py-2 text-body text-midnight hover:bg-mist transition-colors">Detail Spesialis</a>
+                                    <a href="{{ route('reports.compare') }}" class="block px-4 py-2 text-body text-midnight hover:bg-mist transition-colors">Perbandingan</a>
+                                    <a href="{{ route('reports.monthly') }}" class="block px-4 py-2 text-body text-midnight hover:bg-mist transition-colors">Laporan Bulanan</a>
+                                </div>
+                            </div>
                         @endif
                     </div>
 
@@ -61,7 +75,10 @@
                     @if(auth()->user()->isAdmin())
                         <a href="{{ route('units.index') }}" class="block py-2 text-body-lg text-midnight">Unit</a>
                         <a href="{{ route('users.index') }}" class="block py-2 text-body-lg text-midnight">Pengguna</a>
-                        <a href="{{ route('reports.index') }}" class="block py-2 text-body-lg text-midnight">Laporan</a>
+                        <a href="{{ route('reports.index') }}" class="block py-2 text-body-lg text-midnight">Laporan Unit</a>
+                        <a href="{{ route('reports.detail') }}" class="block py-2 text-body-lg text-midnight">Detail Spesialis</a>
+                        <a href="{{ route('reports.compare') }}" class="block py-2 text-body-lg text-midnight">Perbandingan</a>
+                        <a href="{{ route('reports.monthly') }}" class="block py-2 text-body-lg text-midnight">Laporan Bulanan</a>
                     @endif
                     <hr class="my-2 border-frost">
                     <form method="POST" action="{{ route('logout') }}">
@@ -74,7 +91,7 @@
         @endauth
 
         <!-- Notifications -->
-        <div id="notification-container" class="fixed top-4 right-4 z-40 space-y-2 max-w-sm"></div>
+        <div id="notification-container" class="fixed top-16 right-4 z-[60] space-y-2 max-w-sm"></div>
 
         <!-- Main -->
         <main class="min-h-screen">
@@ -101,6 +118,24 @@
                     btn.setAttribute('aria-expanded', menu.classList.contains('hidden') ? 'false' : 'true');
                 });
                 menu.querySelectorAll('a').forEach(l => l.addEventListener('click', () => menu.classList.add('hidden')));
+            }
+
+            // Dropdown Laporan
+            const dropBtn = document.getElementById('dropdown-laporan-btn');
+            const dropMenu = document.getElementById('dropdown-laporan-menu');
+            const dropIcon = document.getElementById('dropdown-laporan-icon');
+            if (dropBtn && dropMenu) {
+                dropBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    dropMenu.classList.toggle('hidden');
+                    dropIcon.classList.toggle('rotate-180');
+                });
+                document.addEventListener('click', (e) => {
+                    if (!document.getElementById('dropdown-laporan').contains(e.target)) {
+                        dropMenu.classList.add('hidden');
+                        dropIcon.classList.remove('rotate-180');
+                    }
+                });
             }
         });
     </script>

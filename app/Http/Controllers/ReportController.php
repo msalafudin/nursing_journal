@@ -24,6 +24,99 @@ class ReportController extends Controller
     }
 
     /**
+     * Show the comparison reports page.
+     */
+    public function comparePage()
+    {
+        $units = Unit::all();
+        $shifts = ['Pagi', 'Siang', 'Malam'];
+
+        return view('reports.compare', [
+            'units' => $units,
+            'shifts' => $shifts,
+        ]);
+    }
+
+    /**
+     * Show the detail/specialist reports page.
+     */
+    public function detailPage()
+    {
+        $units = Unit::all();
+        $shifts = ['Pagi', 'Siang', 'Malam'];
+
+        return view('reports.detail', [
+            'units' => $units,
+            'shifts' => $shifts,
+        ]);
+    }
+
+    /**
+     * Get detail data per specialist for a specific unit.
+     */
+    public function getDetailData(Request $request)
+    {
+        $validated = $request->validate([
+            'unit_id' => 'required|integer|exists:units,id',
+            'shift' => 'nullable|string|in:Pagi,Siang,Malam',
+            'start_date' => 'nullable|date_format:Y-m-d',
+            'end_date' => 'nullable|date_format:Y-m-d',
+        ]);
+
+        $unitId = $request->input('unit_id');
+        $shift = $request->input('shift');
+        $startDate = $request->input('start_date') ?? Carbon::now('Asia/Jakarta')->format('Y-m-d');
+        $endDate = $request->input('end_date') ?? Carbon::now('Asia/Jakarta')->format('Y-m-d');
+
+        $startDateObj = Carbon::createFromFormat('Y-m-d', $startDate, 'Asia/Jakarta');
+        $endDateObj = Carbon::createFromFormat('Y-m-d', $endDate, 'Asia/Jakarta');
+
+        if ($startDateObj->gt($endDateObj)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tanggal mulai harus lebih kecil atau sama dengan tanggal akhir',
+                'error' => 'invalid_date_range',
+            ], 422);
+        }
+
+        if ($startDateObj->diffInDays($endDateObj) > 90) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Rentang tanggal maksimal 90 hari',
+                'error' => 'date_range_exceeded',
+            ], 422);
+        }
+
+        $query = PatientData::query()
+            ->with('unit')
+            ->where('unit_id', $unitId)
+            ->whereBetween('date', [$startDate, $endDate]);
+
+        if ($shift && $shift !== 'all') {
+            $query->where('shift', $shift);
+        }
+
+        $query->orderBy('date', 'asc')->orderBy('shift', 'asc');
+
+        $data = $query->get();
+
+        $chartData = $data->map(function ($record) {
+            return [
+                'date' => $record->date->format('Y-m-d'),
+                'shift' => $record->shift,
+                'unit_name' => $record->unit->name,
+                'total_patients' => $record->total_patients,
+                'details' => $record->data,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $chartData,
+        ]);
+    }
+
+    /**
      * Show the monthly reports page.
      */
     public function monthlyPage()
